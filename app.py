@@ -190,19 +190,7 @@ elif st.session_state.page == "dashboard":
             st.metric("Total Orders", total_count)
         with sidebar_revenue_ph.container():
             st.metric("Total Revenue", f"Rs.{int(st.session_state.total_revenue)}")
-        
-    
-    # --- PREDICTIVE EARNINGS FEATURE ---
-    with sidebar_revenue_ph.container():
-        if total_count > 0:
-            avg_per_order = st.session_state.total_revenue / total_count
-            next_10 = avg_per_order * 10
-            next_hour = (3600 / 5) * avg_per_order  # if speed 5 sec
-            
-            st.markdown("---")
-            st.metric("🔮 Next 10 Orders", f"Rs.{int(next_10)}")
-            st.metric("🔮 Next 1 Hour", f"Rs.{int(next_hour)}")
-            st.caption(f"Avg Rs.{int(avg_per_order)}/order")
+        with top_ph.container():
             c1,c2,c3,c4 = st.columns(4)
             with c1:
                 st.markdown("**🔥 Peak Area**")
