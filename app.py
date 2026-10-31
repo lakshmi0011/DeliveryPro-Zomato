@@ -1,257 +1,216 @@
-
 import streamlit as st
 import pandas as pd
 import random
-from datetime import datetime
 import time
-import math
+from datetime import datetime
 
-st.set_page_config(page_title="DeliveryPro - Zomato", layout="wide", page_icon="🍔")
+st.set_page_config(page_title="DeliveryPro - Zomato Rider", page_icon="🍔", layout="wide")
 
-AREAS_COORDS = {
-    "BTM": (12.9166, 77.6101),
-    "Koramangala": (12.9279, 77.6271),
-    "Indiranagar": (12.9784, 77.6408),
-    "HSR": (12.9116, 77.6387),
-    "Whitefield": (12.9698, 77.7500),
-    "Jayanagar": (12.9279, 77.5937),
-    "Marathahalli": (12.9591, 77.6974),
-    "Bellandur": (12.9352, 77.6245),
-    "Electronic City": (12.8456, 77.6603),
-    "MG Road": (12.9759, 77.6063)
-}
+# Session init
+if "page" not in st.session_state:
+    st.session_state.page = "login"
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+if "rider_name" not in st.session_state:
+    st.session_state.rider_name = ""
+if "phone" not in st.session_state:
+    st.session_state.phone = ""
+if "total_orders" not in st.session_state:
+    st.session_state.total_orders = 0
+if "total_revenue" not in st.session_state:
+    st.session_state.total_revenue = 0
+if "orders" not in st.session_state:
+    st.session_state.orders = []
+if "rider_id" not in st.session_state:
+    st.session_state.rider_id = f"ZOMATO-{random.randint(10000, 99999)}"
+if "last_gen" not in st.session_state:
+    st.session_state.last_gen = time.time()
 
-BASE_PAY = 35
+areas = ["HSR", "Koramangala", "Indiranagar", "BTM", "Marathahalli", "Whitefield", "Jayanagar"]
+customers = ["Rahul", "Priya", "Amit", "Sneha", "Vikram", "Ananya", "Kiran"]
+
 PER_KM = 10
 
-def calc_dist(a1, a2):
-    if a1 == a2:
-        return round(random.uniform(1.0, 3.0), 1)
-    lat1, lon1 = AREAS_COORDS[a1]
-    lat2, lon2 = AREAS_COORDS[a2]
-    dlat = (lat2 - lat1) * 111
-    dlon = (lon2 - lon1) * 111 * 0.8
-    dist = math.sqrt(dlat**2 + dlon**2)
-    return round(max(1.5, dist + random.uniform(-0.5, 0.5)), 1)
-
-if 'page' not in st.session_state:
-    st.session_state.page = "splash"
-if 'orders' not in st.session_state:
-    st.session_state.orders = []
-    st.session_state.order_id = 1
-    st.session_state.total_revenue = 0
-    st.session_state.area_demand = {area: 0 for area in AREAS_COORDS.keys()}
-if 'rider_id' not in st.session_state:
-    st.session_state.rider_id = ""
-if 'rider_phone' not in st.session_state:
-    st.session_state.rider_phone = ""
-if 'rider_name' not in st.session_state:
-    st.session_state.rider_name = ""
-
-st.markdown("""
-<style>
-.splash { text-align:center; padding:50px; }
-.login-box { max-width:400px; margin:auto; padding:30px; border:1px solid #eee; border-radius:20px; box-shadow:0 4px 20px rgba(0,0,0,0.1); }
-.id-card { background: linear-gradient(135deg, #CB202D, #E23744); color:white; padding:20px; border-radius:15px; }
-</style>
-""", unsafe_allow_html=True)
-
-if st.session_state.page == "splash":
-    st.markdown('<div class="splash">', unsafe_allow_html=True)
-    st.markdown("# 🍔")
-    st.markdown("# DeliveryPro")
-    st.markdown("### Rider Partner App")
-    st.markdown("#### Zomato Style")
-    st.markdown("---")
-    st.markdown("##### 🚀 Real-time Orders | 💰 Live Earnings | 📍 Demand Areas")
+# LOGIN PAGE
+if st.session_state.page == "login":
     st.markdown("<br><br>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
-        if st.button("🚀 Get Started", use_container_width=True, type="primary"):
-            st.session_state.page = "login"
-            st.rerun()
-        st.caption("✅ Real Customer Orders | No Fixed Logic | Unlimited Live")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-elif st.session_state.page == "login":
-    st.markdown("<br><br>", unsafe_allow_html=True)
-    st.markdown('<div class="login-box">', unsafe_allow_html=True)
-    st.markdown("### 🔐 Rider Login")
-    st.markdown("Enter your mobile number")
-    phone = st.text_input("📱 Mobile Number", placeholder="Ex: 9876543210", max_chars=10)
-    name = st.text_input("👤 Your Name", placeholder="Ex: Lakshmi")
-    if st.button("📩 Send OTP", use_container_width=True, type="primary"):
-        if len(phone) == 10 and phone.isdigit() and name.strip() != "":
-            otp = random.randint(1000, 9999)
-            st.session_state.generated_otp = otp
-            st.session_state.rider_phone = phone
-            st.session_state.rider_name = name
-            st.session_state.page = "otp"
-            st.rerun()
-        else:
-            st.error("10 digit number and name beku!")
-    st.markdown('</div>', unsafe_allow_html=True)
-    if st.button("⬅️ Back"):
-        st.session_state.page = "splash"
-        st.rerun()
-
-elif st.session_state.page == "otp":
-    st.markdown("<br><br>", unsafe_allow_html=True)
-    st.markdown('<div class="login-box">', unsafe_allow_html=True)
-    st.markdown("### 🔑 OTP Verification")
-    st.info(f"OTP sent to +91 {st.session_state.rider_phone} (Demo OTP: {st.session_state.generated_otp})")
-    otp_input = st.text_input("Enter 4-digit OTP", placeholder="Ex: 1234", max_chars=4)
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("✅ Verify & Register", use_container_width=True, type="primary"):
-            if otp_input.isdigit() and int(otp_input) == st.session_state.generated_otp:
-                rider_id = f"ZOMATO-{random.randint(10000, 99999)}"
-                st.session_state.rider_id = rider_id
+        st.markdown("## 🍔 DeliveryPro - Zomato Rider Partner")
+        st.markdown("### Welcome! Please Register")
+        st.markdown("---")
+        name = st.text_input("👤 Your Name", placeholder="ex: lakshmi")
+        phone = st.text_input("📱 Mobile Number", placeholder="ex: 8747941418")
+        if st.button("✅ Register & Start Delivery", use_container_width=True, type="primary"):
+            if name and phone and len(phone) >= 10:
+                st.session_state.rider_name = name
+                st.session_state.phone = phone
                 st.session_state.page = "dashboard"
+                st.session_state.logged_in = True
+                st.session_state.rider_id = f"ZOMATO-{random.randint(10000, 99999)}"
+                st.success(f"Welcome {name}!")
+                time.sleep(0.5)
                 st.rerun()
             else:
-                st.error(f"Wrong OTP! Correct is {st.session_state.generated_otp}")
-    with col2:
-        if st.button("🔄 Resend OTP", use_container_width=True):
-            st.session_state.generated_otp = random.randint(1000, 9999)
-            st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
+                st.error("Please enter valid Name and 10 digit Mobile Number!")
+        st.info("Simulation app - No OTP needed!")
 
-elif st.session_state.page == "dashboard":
-    col1, col2 = st.columns([3,1])
-    with col1:
-        st.markdown(f"### 🍔 Welcome, {st.session_state.rider_name}! 👋")
-    with col2:
-        if st.button("🚪 Logout"):
-            st.session_state.page = "splash"
-            st.session_state.orders = []
-            st.session_state.rider_id = ""
-            st.rerun()
-    
-    st.markdown(f"""
-    <div class="id-card">
-        <h3>🪪 Zomato Rider ID: {st.session_state.rider_id}</h3>
-        <p>👤 {st.session_state.rider_name} | 📱 +91 {st.session_state.rider_phone}</p>
-        <p>⭐ Rating: {random.uniform(4.5,5.0):.1f} | 🕐 Online | 🏍️ Bike</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("---")
-    sidebar_total_ph = st.sidebar.empty()
-    sidebar_revenue_ph = st.sidebar.empty()
-    speed = st.sidebar.slider("Order Speed (sec)", 1, 5, 2, key="dash_speed")
-    st.sidebar.markdown(f"**Rider:** {st.session_state.rider_name}")
-    st.sidebar.markdown(f"**ID:** {st.session_state.rider_id}")
-    if st.sidebar.button("🔄 Reset Orders"):
-        st.session_state.orders = []
-        st.session_state.order_id = 1
-        st.session_state.total_revenue = 0
-        st.session_state.area_demand = {area: 0 for area in AREAS_COORDS.keys()}
-    
-    st.title("📦 Live Orders & Demand Area")
+# DASHBOARD
+else:
+    # Placeholders - ALL defined together
     top_ph = st.empty()
+    sidebar_total_ph = st.empty()
+    sidebar_revenue_ph = st.empty()
+    sidebar_peak_ph = st.empty()
+    sidebar_last_ph = st.empty()
+    sidebar_rider_ph = st.empty()
+    map_ph = st.empty()
     mid_ph = st.empty()
     chart_ph = st.empty()
-    
-    restaurants = ["Truffles", "Toit", "Meghana Foods", "Corner House", "Empire", "A2B", "MCD", "KFC", "Dominos", "Beijing Bites"]
-    
-    for _ in range(10000):
-        now = datetime.now()
-        cust_area = random.choice(list(AREAS_COORDS.keys()))
-        rest_area = random.choice(list(AREAS_COORDS.keys()))
-        if random.random() < 0.7:
-            rest_area = random.choice([cust_area] + list(AREAS_COORDS.keys())[:4])
-        dist = calc_dist(rest_area, cust_area)
-        rest = random.choice(restaurants)
-        food = random.randint(150, 600)
-        surge = random.uniform(1.2, 1.8) if 18 <= now.hour <= 22 else random.uniform(1.0, 1.2)
-        delivery_fee = (BASE_PAY + dist * PER_KM) * surge
-        total = food + delivery_fee
-        rider_earn = delivery_fee * 0.8
-        order = {
-            "ID": st.session_state.order_id,
-            "Time": now.strftime("%H:%M:%S"),
-            "Restaurant": rest,
-            "From": rest_area,
-            "To": cust_area,
-            "Dist_km": dist,
-            "Total_Rs": int(total),
-            "Rider_Rs": round(rider_earn, 1),
-        }
-        st.session_state.orders.append(order)
-        st.session_state.order_id += 1
-        st.session_state.total_revenue += total
-        st.session_state.area_demand[rest_area] += 1
-        total_count = len(st.session_state.orders)
-        recent = st.session_state.orders[-15:][::-1]
-        sorted_demand = sorted(st.session_state.area_demand.items(), key=lambda x: x[1], reverse=True)
-        peak_area, peak_count = sorted_demand[0] if sorted_demand else ("BTM", 0)
+
+    with st.sidebar:
         with sidebar_total_ph.container():
-            st.metric("Total Orders", total_count)
+            st.metric("Total Orders", st.session_state.total_orders)
+        st.markdown("---")
         with sidebar_revenue_ph.container():
             st.metric("Total Revenue", f"Rs.{int(st.session_state.total_revenue)}")
-        with top_ph.container():
-            c1,c2,c3,c4 = st.columns(4)
-            with c1:
-                st.markdown("**🔥 Peak Area**")
-                st.markdown(f"### {peak_area}")
-                st.caption(f"{int(peak_count)} orders")
-            with c2:
-                st.markdown("**📦 Total Orders**")
-                st.markdown(f"### {total_count}")
-                st.caption("Unlimited live")
-            with c3:
-                st.markdown("**🕐 Last Order**")
-                st.markdown(f"### {order['Time']}")
-                st.caption(f"{rest_area} → {cust_area}")
-            with c4:
-                st.markdown("**💰 Rider Earn**")
-                st.markdown(f"### Rs.{order['Rider_Rs']}")
-                st.caption(f"{dist}km × Rs.{PER_KM}")
-        with map_ph.container():
-            st.markdown("### 🗺️ Live High Demand Map - Real Time")
-            import pandas as pd
-            from datetime import datetime
-        # Live demand - live timing mele color change
-            live_demand = pd.DataFrame({
-                'Area': ['Indiranagar', 'HSR', 'Koramangala', 'BTM', 'Marathahalli'],
-                'lat': [12.9784, 12.9116, 12.9279, 12.9166, 12.9591],
-                'lon': [77.6408, 77.6377, 77.6271, 77.6101, 77.6974],
-                'orders': [random.randint(1, 10) for _ in range(5)]
-            })
-            st.map(live_demand, latitude='lat', longitude='lon', size='orders')
-        
-            for idx, row in live_demand.iterrows():
-                if row['orders'] >= 7:
-                    st.markdown(f"🔴 **{row['Area']} - HIGH DEMAND - {row['orders']} orders**")
-                elif row['orders'] >= 4:
-                    st.markdown(f"🟠 {row['Area']} - {row['orders']} orders - Medium")
-                else:
-                    st.markdown(f"🟢 {row['Area']} - {row['orders']} orders - Low")
-        
-            st.caption(f"⏰ Live: {datetime.now().strftime('%H:%M:%S')} - Color changes by location!")
-            with mid_ph.container():
-            col1, col2 = st.columns([2,1])
-            with col1:
-                st.subheader(f"🍔 LIVE Orders - Every {speed} sec (Total {total_count})")
-                df_recent = pd.DataFrame(recent)
-                st.dataframe(df_recent, use_container_width=True, height=350)
-            with col2:
-                st.subheader("📍 Distance & Earnings")
-                st.success(f"Order #{order['ID']}\n{rest} ({rest_area}) → {cust_area}\nDistance: {dist}km\nRider: Rs.{rider_earn:.0f}\nID: {st.session_state.rider_id}")
-            with chart_ph.container():
-            c1,c2 = st.columns(2)
-            with c1:
-                st.subheader("🔥 Area Demand")
-                demand_df = pd.DataFrame(sorted_demand, columns=['Area','Orders']).set_index('Area')
-                st.bar_chart(demand_df)
-            with c2:
-                st.subheader("💵 Avg Earning by Area")
-                area_earn = {}
-                for o in st.session_state.orders[-100:]:
-                    area_earn.setdefault(o['From'], []).append(o['Rider_Rs'])
-                if area_earn:
-                    avg_earn = {k: sum(v)/len(v) for k,v in area_earn.items()}
-                    earn_df = pd.DataFrame(list(avg_earn.items()), columns=['Area','AvgEarn']).set_index('Area').sort_values('AvgEarn', ascending=False)
-                    st.bar_chart(earn_df)
-        time.sleep(speed)
+        st.markdown("---")
+        order_speed = st.slider("Order Speed (sec)", 1, 10, 2)
+        st.markdown("---")
+        if st.button("🔄 Reset Orders", use_container_width=True):
+            st.session_state.total_orders = 0
+            st.session_state.total_revenue = 0
+            st.session_state.orders = []
+            st.rerun()
+        if st.button("🚪 Logout", use_container_width=True):
+            st.session_state.page = "login"
+            st.rerun()
+        st.markdown("---")
+        with sidebar_peak_ph.container():
+            st.write("")
+        with sidebar_last_ph.container():
+            st.write("")
+        with sidebar_rider_ph.container():
+            st.write("")
+
+    # Header
+    with top_ph.container():
+        st.markdown(f"## 🍔 Welcome, {st.session_state.rider_name}! 👋")
+        st.markdown(f"""
+        <div style="background-color:#DC2626; padding:18px; border-radius:12px; color:white;">
+            <h3 style="margin:0; color:white;">🪪 Zomato Rider ID: {st.session_state.rider_id}</h3>
+            <p style="margin:6px 0 0 0;">👤 {st.session_state.rider_name} | 📱 +91 {st.session_state.phone} | ⭐ 4.8 | 🕒 Online</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # Generate order logic
+    def gen_order():
+        area_from = random.choice(areas)
+        area_to = random.choice([a for a in areas if a != area_from])
+        dist = round(random.uniform(1.5, 12.5), 1)
+        earn = round(dist * PER_KM + random.randint(20, 50), 0)
+        return {
+            "ID": random.randint(1000, 9999),
+            "Time": datetime.now().strftime("%H:%M:%S"),
+            "Customer": random.choice(customers),
+            "From": area_from,
+            "To": area_to,
+            "Distance": dist,
+            "Rider_Rs": earn,
+            "Status": random.choice(["Delivered", "On the way", "Picked"])
+        }
+
+    if time.time() - st.session_state.last_gen > order_speed:
+        o = gen_order()
+        st.session_state.orders.insert(0, o)
+        st.session_state.total_orders += 1
+        st.session_state.total_revenue += o["Rider_Rs"]
+        st.session_state.last_gen = time.time()
+        if len(st.session_state.orders) > 100:
+            st.session_state.orders = st.session_state.orders[:100]
+
+    # Update sidebar
+    with sidebar_total_ph.container():
+        st.metric("Total Orders", st.session_state.total_orders)
+    with sidebar_revenue_ph.container():
+        st.metric("Total Revenue", f"Rs.{int(st.session_state.total_revenue)}")
+    
+    if st.session_state.orders:
+        recent = st.session_state.orders
+        peak_area = max(set([x["To"] for x in recent]), key=[x["To"] for x in recent].count) if recent else "HSR"
+        last = recent[0]
+        dist = last["Distance"]
+        with sidebar_peak_ph.container():
+            st.metric("Peak Area", peak_area, f"{len(recent)} orders")
+        with sidebar_last_ph.container():
+            st.metric("Last Order", last["Time"], f"{last['From']} → {last['To']}")
+        with sidebar_rider_ph.container():
+            st.metric("Rider Earn", f"Rs.{last['Rider_Rs']:.0f}", f"{dist}km × Rs.{PER_KM}")
+    else:
+        peak_area = "HSR"
+        last = {"Distance": 0, "Rider_Rs": 0, "From": "-", "To": "-", "Time": "-"}
+        dist = 0
+
+    # LIVE HIGH DEMAND MAP - Live color changing by location
+    with map_ph.container():
+        st.markdown("### 🗺️ Live High Demand Map - Real Time")
+        live_demand = pd.DataFrame({
+            'Area': ['Indiranagar', 'HSR', 'Koramangala', 'BTM', 'Marathahalli'],
+            'lat': [12.9784, 12.9116, 12.9279, 12.9166, 12.9591],
+            'lon': [77.6408, 77.6377, 77.6271, 77.6101, 77.6974],
+            'orders': [random.randint(1, 10) for _ in range(5)]
+        })
+        st.map(live_demand, latitude='lat', longitude='lon', size='orders')
+        for idx, row in live_demand.iterrows():
+            if row['orders'] >= 7:
+                st.markdown(f"🔴 **{row['Area']} - HIGH DEMAND - {row['orders']} orders - Go now!**")
+            elif row['orders'] >= 4:
+                st.markdown(f"🟠 {row['Area']} - {row['orders']} orders - Medium")
+            else:
+                st.markdown(f"🟢 {row['Area']} - {row['orders']} orders - Low")
+        st.caption(f"⏰ Live: {datetime.now().strftime('%H:%M:%S')} - Color changes every {order_speed} sec by location!")
+
+    # LIVE Orders & Demand Area
+    with mid_ph.container():
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            st.subheader(f"🍔 LIVE Orders - Every {order_speed} sec (Total {st.session_state.total_orders})")
+            if st.session_state.orders:
+                df_recent = pd.DataFrame(st.session_state.orders[:20])
+                st.dataframe(df_recent[["Time", "Customer", "From", "To", "Distance", "Rider_Rs", "Status"]], use_container_width=True, height=350)
+            else:
+                st.info("Generating first order...")
+        with col2:
+            st.subheader("📍 Distance & Earnings")
+            if st.session_state.orders:
+                df_e = pd.DataFrame(st.session_state.orders[:10])
+                st.bar_chart(df_e.set_index("From")["Rider_Rs"])
+            st.markdown("---")
+            st.subheader("🔥 Area Demand")
+            if st.session_state.orders:
+                ddf = pd.DataFrame(st.session_state.orders)
+                area_counts = ddf["To"].value_counts()
+                st.bar_chart(area_counts)
+
+    with chart_ph.container():
+        c1, c2 = st.columns(2)
+        with c1:
+            st.subheader("🔥 Area Demand")
+            if st.session_state.orders:
+                demand_df = pd.DataFrame(st.session_state.orders)
+                sorted_demand = demand_df["To"].value_counts().reset_index()
+                sorted_demand.columns = ['Area', 'Orders']
+                demand_plot = sorted_demand.set_index('Area')
+                st.bar_chart(demand_plot)
+        with c2:
+            st.subheader("💹 Avg Earning by Area")
+            area_earn = {}
+            for o in st.session_state.orders[-100:]:
+                area_earn.setdefault(o['From'], []).append(o['Rider_Rs'])
+            if area_earn:
+                avg_earn = {k: sum(v)/len(v) for k, v in area_earn.items()}
+                earn_df = pd.DataFrame(list(avg_earn.items()), columns=['Area', 'AvgEarn']).set_index('Area').sort_values('AvgEarn', ascending=False)
+                st.bar_chart(earn_df)
+
+    time.sleep(order_speed)
+    st.rerun()
