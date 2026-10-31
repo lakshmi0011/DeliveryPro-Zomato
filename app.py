@@ -208,7 +208,29 @@ elif st.session_state.page == "dashboard":
                 st.markdown("**💰 Rider Earn**")
                 st.markdown(f"### Rs.{order['Rider_Rs']}")
                 st.caption(f"{dist}km × Rs.{PER_KM}")
-        with mid_ph.container():
+        with map_ph.container():
+            st.markdown("### 🗺️ Live High Demand Map - Real Time")
+            import pandas as pd
+            from datetime import datetime
+        # Live demand - live timing mele color change
+            live_demand = pd.DataFrame({
+                'Area': ['Indiranagar', 'HSR', 'Koramangala', 'BTM', 'Marathahalli'],
+                'lat': [12.9784, 12.9116, 12.9279, 12.9166, 12.9591],
+                'lon': [77.6408, 77.6377, 77.6271, 77.6101, 77.6974],
+                'orders': [random.randint(1, 10) for _ in range(5)]
+            })
+            st.map(live_demand, latitude='lat', longitude='lon', size='orders')
+        
+            for idx, row in live_demand.iterrows():
+                if row['orders'] >= 7:
+                    st.markdown(f"🔴 **{row['Area']} - HIGH DEMAND - {row['orders']} orders**")
+                elif row['orders'] >= 4:
+                    st.markdown(f"🟠 {row['Area']} - {row['orders']} orders - Medium")
+                else:
+                    st.markdown(f"🟢 {row['Area']} - {row['orders']} orders - Low")
+        
+            st.caption(f"⏰ Live: {datetime.now().strftime('%H:%M:%S')} - Color changes by location!")
+            with mid_ph.container():
             col1, col2 = st.columns([2,1])
             with col1:
                 st.subheader(f"🍔 LIVE Orders - Every {speed} sec (Total {total_count})")
@@ -217,7 +239,7 @@ elif st.session_state.page == "dashboard":
             with col2:
                 st.subheader("📍 Distance & Earnings")
                 st.success(f"Order #{order['ID']}\n{rest} ({rest_area}) → {cust_area}\nDistance: {dist}km\nRider: Rs.{rider_earn:.0f}\nID: {st.session_state.rider_id}")
-        with chart_ph.container():
+            with chart_ph.container():
             c1,c2 = st.columns(2)
             with c1:
                 st.subheader("🔥 Area Demand")
