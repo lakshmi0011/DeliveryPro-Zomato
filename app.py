@@ -2,15 +2,9 @@ import streamlit as st
 import pandas as pd
 import random
 import time
-from datetime import datetime, timezone, timedelta
+from datetime import datetime
 
 st.set_page_config(page_title="DeliveryPro", page_icon="🍔", layout="wide")
-
-# IST TIMEZONE - FIX FOR WRONG TIME
-IST = timezone(timedelta(hours=5, minutes=30))
-
-def now_ist():
-    return datetime.now(IST)
 
 if "page" not in st.session_state:
     st.session_state.page="login"
@@ -32,7 +26,7 @@ def gen_order():
     a_to=random.choice([a for a in areas if a!=a_from])
     d=round(random.uniform(1.5,12.5),1)
     e=round(d*PER_KM+random.randint(20,50),0)
-    return {"Time":now_ist().strftime("%H:%M:%S"),"Date":now_ist().strftime("%d-%m-%Y"),"Customer":random.choice(customers),"From":a_from,"To":a_to,"Distance":d,"Rider_Rs":e,"Status":random.choice(["Delivered","On the way"])}
+    return {"Time":datetime.now().strftime("%H:%M:%S"),"Date":datetime.now().strftime("%d-%m-%Y"),"Customer":random.choice(customers),"From":a_from,"To":a_to,"Distance":d,"Rider_Rs":e,"Status":random.choice(["Delivered","On the way"])}
 
 if st.session_state.page=="login":
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -63,10 +57,11 @@ elif st.session_state.page=="otp":
         with ca:
             if st.button("Verify OTP", use_container_width=True, type="primary"):
                 if otp=="1234":
+                    # RESET ON LOGIN - Yav time login adru, aa time inda start
                     st.session_state.total_orders=0
                     st.session_state.total_revenue=0
                     st.session_state.orders=[]
-                    st.session_state.login_time=now_ist()
+                    st.session_state.login_time=datetime.now()
                     st.session_state.rider_id=f"ZOMATO-{random.randint(10000,99999)}"
                     st.session_state.page="dashboard"
                     st.rerun()
@@ -103,17 +98,16 @@ else:
             st.session_state.total_orders=0
             st.session_state.total_revenue=0
             st.session_state.orders=[]
-            st.session_state.login_time=now_ist()
+            st.session_state.login_time=datetime.now()
             st.rerun()
         if st.button("Logout", use_container_width=True):
             st.session_state.page="login"
             st.rerun()
 
-    login_time_str = st.session_state.login_time.strftime('%I:%M %p on %d-%m-%Y') if st.session_state.login_time else now_ist().strftime('%I:%M %p')
-    live_now = now_ist().strftime('%I:%M:%S %p')
-    
+    # LIVE TIMINGS ALREADY IDE - HAGEE IRLI
     st.markdown(f"### Welcome, {st.session_state.rider_name}")
-    st.markdown(f"""<div style="background:#16a34a; padding:10px; border-radius:8px; color:white;"><b>{st.session_state.rider_id} | Online | Live: {live_now} | Login: {login_time_str}</b></div>""", unsafe_allow_html=True)
+    login_time_str = st.session_state.login_time.strftime('%I:%M %p on %d-%m-%Y') if st.session_state.login_time else datetime.now().strftime('%I:%M %p')
+    st.markdown(f"""<div style="background:#16a34a; padding:10px; border-radius:8px; color:white;"><b>{st.session_state.rider_id} | Online | Live: {datetime.now().strftime('%I:%M:%S %p')} | Login: {login_time_str}</b></div>""", unsafe_allow_html=True)
     st.markdown("")
 
     if st.session_state.orders:
@@ -123,15 +117,16 @@ else:
             to_counts[x["To"]]=to_counts.get(x["To"],0)+1
         peak=max(to_counts, key=to_counts.get) if to_counts else "HSR"
         last=recent[0]
+        # TOTAL ORDERS SHOW - AH TIME PRAKARA + DEMAND AREA + EACH ORDER AMT + PEAK + LIVE TIMINGS
         m1,m2,m3,m4=st.columns(4)
         m1.metric("Total Orders", st.session_state.total_orders, f"Since {st.session_state.login_time.strftime('%I:%M %p')}" if st.session_state.login_time else "")
         m2.metric("Total Revenue", f"Rs.{int(st.session_state.total_revenue)}", f"Rs.{last['Rider_Rs']} last")
-        m3.markdown(f"""<div style="background:#dcfce7; padding:8px; border-radius:8px; border-left:4px solid #16a34a;"><div style="font-size:11px; color:#15803d;">Peak Demand - {now_ist().strftime('%I:%M %p')}</div><div style="font-size:16px; font-weight:bold; color:#166534;">{peak}</div><div style="font-size:10px; color:#15803d;">{to_counts.get(peak,0)} orders live</div></div>""", unsafe_allow_html=True)
+        m3.markdown(f"""<div style="background:#dcfce7; padding:8px; border-radius:8px; border-left:4px solid #16a34a;"><div style="font-size:11px; color:#15803d;">Peak Demand - {datetime.now().strftime('%I:%M %p')}</div><div style="font-size:16px; font-weight:bold; color:#166534;">{peak}</div><div style="font-size:10px; color:#15803d;">{to_counts.get(peak,0)} orders live</div></div>""", unsafe_allow_html=True)
         m4.metric("Last Order Amt", f"Rs.{last['Rider_Rs']}", f"{last['From']} → {last['To']} | {last['Time']}")
 
     st.divider()
     st.markdown("### High Demand Areas")
-    st.caption(f"Live: {live_now} IST | Login: {login_time_str} | Total {st.session_state.total_orders} orders since login - IST Timezone Fixed!")
+    st.caption(f"Live: {datetime.now().strftime('%I:%M:%S %p')} | Login: {login_time_str} | Total {st.session_state.total_orders} orders since login")
 
     if st.session_state.orders:
         live_counts={}
@@ -153,16 +148,20 @@ else:
     st.divider()
     c1,c2=st.columns([2,1])
     with c1:
-        st.subheader(f"Live Orders")
-        st.caption(f"Total {st.session_state.total_orders} orders since {login_time_str} | IST: {live_now}")
+        st.subheader(f"Live Orders - Each Order Amount Changes")
+        st.caption(f"Total {st.session_state.total_orders} orders since {login_time_str} | Each order amount Rs.50-180 based on distance")
         if st.session_state.orders:
             df=pd.DataFrame(st.session_state.orders[:20])
             st.dataframe(df[["Time","Customer","From","To","Distance","Rider_Rs","Status"]], use_container_width=True, height=400)
     with c2:
-        st.subheader("Area Demand")
+        st.subheader("Area Demand - Orders Count")
         if st.session_state.orders:
             ddf=pd.DataFrame(st.session_state.orders[:50])
             st.bar_chart(ddf["To"].value_counts())
+        st.subheader("Amount per Order")
+        if st.session_state.orders:
+            ddf2=pd.DataFrame(st.session_state.orders[:20])
+            st.bar_chart(ddf2.set_index("To")["Rider_Rs"])
 
     time.sleep(speed)
     st.rerun()
